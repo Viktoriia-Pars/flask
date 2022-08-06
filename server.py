@@ -104,13 +104,20 @@ class CreateArticleModel(pydantic.BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
+
+def Check_Articles(session, article_id):
+    article = session.query(Article).get(article_id)
+    if article is None:
+        raise HttpError(404, 'article not found')
+    else:
+        return article
+
+
 class ArticleView(MethodView):
 
     def get(self, article_id):
         with Session() as session:
-            article = session.query(Article).get(article_id)
-            if article is None:
-                raise HttpError(404, 'article not found')
+            article = Check_Articles(session,article_id)
             return jsonify({
                 'header': article.header,
                 'description': article.description,
@@ -141,12 +148,9 @@ class ArticleView(MethodView):
 
     def delete(self, article_id):
         with Session() as session:
-            article = session.query(Article).get(article_id)
-            if article is None:
-                raise HttpError(404, 'article not found')
-            else:
-                session.delete(article)
-                session.commit()
+            article = Check_Articles(session,article_id)
+            session.delete(article)
+            session.commit()
             return jsonify({'result': 'article deleted'})
 
     def put(self, article_id):
@@ -155,9 +159,7 @@ class ArticleView(MethodView):
         except pydantic.ValidationError as er:
             raise HttpError(400, er.errors())
         with Session() as session:
-            article = session.query(Article).get(article_id)
-            if article is None:
-                raise HttpError(404, 'article not found')
+            article = Check_Articles(session,article_id)
             if not session.query(User).get(json_data_validate['author']):
                 raise HttpError(404, 'user is not valid')
             else:
